@@ -108,11 +108,12 @@ async function runGemini(ctx: Ctx, attempted: Set<string>): Promise<{ text: stri
 }
 
 /** Collects every number the LLM was shown, so the summary can be checked against it. */
-function collectNumbers(v: unknown, out: Set<string>) {
+export function collectNumbers(v: unknown, out: Set<string>) {
   if (typeof v === "number") out.add(String(v));
   else if (typeof v === "string") for (const m of v.match(/\d+(\.\d+)?/g) ?? []) out.add(m);
   else if (Array.isArray(v)) v.forEach((x) => collectNumbers(x, out));
-  else if (v && typeof v === "object") Object.values(v).forEach((x) => collectNumbers(x, out));
+  // Keys count too: demographic buckets like "35_to_44" carry numbers in their names.
+  else if (v && typeof v === "object") Object.entries(v).forEach(([k, x]) => (collectNumbers(k, out), collectNumbers(x, out)));
 }
 
 /** True when every number in the text appeared in a tool result (ordinals like "41st" included). */

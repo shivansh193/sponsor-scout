@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import { numbersGrounded, runAgent } from "./run";
+import { collectNumbers, numbersGrounded, runAgent } from "./run";
 
 beforeAll(() => {
   process.env.QLOO_MOCK = "1";
@@ -11,6 +11,11 @@ describe("numbersGrounded", () => {
   const allowed = new Set(["87", "34"]);
   it("accepts numbers the tools returned, and small counts", () => {
     expect(numbersGrounded("Affinity 87, 34th percentile, 3 podcasts.", allowed)).toBe(true);
+  });
+  it("counts numbers in object keys, like demographic buckets", () => {
+    const seen = new Set<string>();
+    collectNumbers({ demographics: { age: { "35_to_44": 0.4, "45_to_54": 0.2 } } }, seen);
+    expect(numbersGrounded("Mostly ages 35 to 54.", seen)).toBe(true);
   });
   it("rejects invented numbers", () => {
     expect(numbersGrounded("Reaches 250000 listeners.", allowed)).toBe(false);
