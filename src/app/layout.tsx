@@ -9,9 +9,14 @@ const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"]
 const fraunces = Fraunces({ variable: "--font-fraunces", subsets: ["latin"] });
 
 
+const DESCRIPTION = "Find the podcasts, creators, neighbourhoods and collab brands your customers already love, ranked by value for small brands. Built on Qloo taste data.";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://sponsor-scout.vercel.app"),
   title: APP_NAME,
-  description: "Find the podcasts, creators, neighbourhoods and collab brands your customers already love, ranked by value for small brands. Built on Qloo taste data.",
+  description: DESCRIPTION,
+  openGraph: { title: APP_NAME, description: DESCRIPTION, type: "website" },
+  twitter: { card: "summary_large_image", title: APP_NAME, description: DESCRIPTION },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
