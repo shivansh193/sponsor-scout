@@ -12,12 +12,41 @@ function ai(): GoogleGenAI {
   return client;
 }
 
+// Optional second model, tried once the main one keeps returning overload errors.
+const FALLBACK_MODEL = process.env.GEMINI_FALLBACK_MODEL;
+const RETRY_DELAYS_MS = [800, 2000];
+
+function isTransient(e: unknown): boolean {
+  const msg = e instanceof Error ? e.message : String(e);
+  return /\b(429|500|502|503|504)\b|overloaded|high demand|UNAVAILABLE|RESOURCE_EXHAUSTED/i.test(msg);
+}
+
+/** Retries transient Gemini errors (overload, rate limit) with backoff, then tries the fallback model. */
+async function withRetry<T>(fn: (model: string) => Promise<T>): Promise<T> {
+  const models = FALLBACK_MODEL && FALLBACK_MODEL !== GEMINI_MODEL ? [GEMINI_MODEL, FALLBACK_MODEL] : [GEMINI_MODEL];
+  let last: unknown;
+  for (const model of models) {
+    for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
+      try {
+        return await fn(model);
+      } catch (e) {
+        last = e;
+        if (!isTransient(e)) throw e;
+        if (attempt < RETRY_DELAYS_MS.length) await new Promise((r) => setTimeout(r, RETRY_DELAYS_MS[attempt]));
+      }
+    }
+  }
+  throw last;
+}
+
 export async function generateText(prompt: string, system?: string): Promise<string> {
-  const res = await ai().models.generateContent({
-    model: GEMINI_MODEL,
-    contents: prompt,
-    config: system ? { systemInstruction: system } : undefined,
-  });
+  const res = await withRetry((model) =>
+    ai().models.generateContent({
+      model,
+      contents: prompt,
+      config: system ? { systemInstruction: system } : undefined,
+    }),
+  );
   return res.text?.trim() ?? "";
 }
 
@@ -39,11 +68,13 @@ export async function toolTurn(history: Content[], tools: ToolDef[], system: str
     description: t.description,
     parametersJsonSchema: t.parameters,
   }));
-  const res = await ai().models.generateContent({
-    model: GEMINI_MODEL,
-    contents: history,
-    config: { systemInstruction: system, tools: [{ functionDeclarations }], temperature: 0.2 },
-  });
+  const res = await withRetry((model) =>
+    ai().models.generateContent({
+      model,
+      contents: history,
+      config: { systemInstruction: system, tools: [{ functionDeclarations }], temperature: 0.2 },
+    }),
+  );
   return {
     text: res.text?.trim() ?? "",
     calls: (res.functionCalls ?? []).map((c) => ({ id: c.id, name: c.name ?? "", args: (c.args ?? {}) as Record<string, unknown> })),
