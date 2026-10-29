@@ -1,4 +1,4 @@
-import { GoogleGenAI, type Content, type FunctionDeclaration } from "@google/genai";
+import { GoogleGenAI, type Content, type FunctionDeclaration, type ThinkingLevel } from "@google/genai";
 
 // Gemini wrapper. The model ID is configurable because Google rotates Flash
 // IDs; the default alias tracks the current Flash model.
@@ -18,6 +18,15 @@ const RETRY_DELAYS_MS = [800, 2000];
 // Per-request cap, so one slow call can't eat the whole serverless time budget.
 const CALL_TIMEOUT_MS = Number(process.env.GEMINI_CALL_TIMEOUT_MS ?? 20000);
 
+// Planning tool calls needs little reasoning, and Flash's default thinking makes
+// each turn slow. "default" leaves the model's own setting.
+const THINKING_LEVEL = (process.env.GEMINI_THINKING_LEVEL ?? "MINIMAL").toUpperCase();
+let thinkingSupported = THINKING_LEVEL !== "DEFAULT";
+
+function thinkingConfig(): { thinkingConfig?: { thinkingLevel: ThinkingLevel } } {
+  return thinkingSupported ? { thinkingConfig: { thinkingLevel: THINKING_LEVEL as ThinkingLevel } } : {};
+}
+
 function isTransient(e: unknown): boolean {
   const msg = e instanceof Error ? e.message : String(e);
   return /\b(429|500|502|503|504)\b|overloaded|high demand|UNAVAILABLE|RESOURCE_EXHAUSTED/i.test(msg);
@@ -33,6 +42,12 @@ async function withRetry<T>(fn: (model: string) => Promise<T>): Promise<T> {
         return await fn(model);
       } catch (e) {
         last = e;
+        // A model that rejects the thinking setting: drop it and retry straight away.
+        if (thinkingSupported && /thinking/i.test(e instanceof Error ? e.message : String(e))) {
+          thinkingSupported = false;
+          attempt--;
+          continue;
+        }
         if (!isTransient(e)) throw e;
         if (attempt < RETRY_DELAYS_MS.length) await new Promise((r) => setTimeout(r, RETRY_DELAYS_MS[attempt]));
       }
@@ -46,7 +61,7 @@ export async function generateText(prompt: string, system?: string): Promise<str
     ai().models.generateContent({
       model,
       contents: prompt,
-      config: { ...(system ? { systemInstruction: system } : {}), abortSignal: AbortSignal.timeout(CALL_TIMEOUT_MS) },
+      config: { ...(system ? { systemInstruction: system } : {}), ...thinkingConfig(), abortSignal: AbortSignal.timeout(CALL_TIMEOUT_MS) },
     }),
   );
   return res.text?.trim() ?? "";
@@ -74,7 +89,7 @@ export async function toolTurn(history: Content[], tools: ToolDef[], system: str
     ai().models.generateContent({
       model,
       contents: history,
-      config: { systemInstruction: system, tools: [{ functionDeclarations }], temperature: 0.2, abortSignal: AbortSignal.timeout(CALL_TIMEOUT_MS) },
+      config: { systemInstruction: system, tools: [{ functionDeclarations }], temperature: 0.2, ...thinkingConfig(), abortSignal: AbortSignal.timeout(CALL_TIMEOUT_MS) },
     }),
   );
   return {

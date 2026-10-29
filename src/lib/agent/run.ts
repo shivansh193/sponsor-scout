@@ -8,7 +8,7 @@ import { TOOLS, runTool, type Ctx, type Emit } from "./tools";
 
 const MAX_TURNS = 14;
 // After this, the agent hands over to the scripted plan so the request finishes in time.
-const GEMINI_BUDGET_MS = Number(process.env.GEMINI_BUDGET_MS ?? 30000);
+const GEMINI_BUDGET_MS = Number(process.env.GEMINI_BUDGET_MS ?? 40000);
 
 const SYSTEM = `You are Sponsor Scout, a media-planning agent for small direct-to-consumer brands.
 Your job: find who the brand should sponsor (podcasts, creators, artists), where it should show up in a city, and which non-competing brands to collaborate with, using Qloo taste data through your tools.
