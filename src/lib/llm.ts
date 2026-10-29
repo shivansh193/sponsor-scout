@@ -15,6 +15,8 @@ function ai(): GoogleGenAI {
 // Optional second model, tried once the main one keeps returning overload errors.
 const FALLBACK_MODEL = process.env.GEMINI_FALLBACK_MODEL;
 const RETRY_DELAYS_MS = [800, 2000];
+// Per-request cap, so one slow call can't eat the whole serverless time budget.
+const CALL_TIMEOUT_MS = Number(process.env.GEMINI_CALL_TIMEOUT_MS ?? 20000);
 
 function isTransient(e: unknown): boolean {
   const msg = e instanceof Error ? e.message : String(e);
@@ -44,7 +46,7 @@ export async function generateText(prompt: string, system?: string): Promise<str
     ai().models.generateContent({
       model,
       contents: prompt,
-      config: system ? { systemInstruction: system } : undefined,
+      config: { ...(system ? { systemInstruction: system } : {}), abortSignal: AbortSignal.timeout(CALL_TIMEOUT_MS) },
     }),
   );
   return res.text?.trim() ?? "";
@@ -72,7 +74,7 @@ export async function toolTurn(history: Content[], tools: ToolDef[], system: str
     ai().models.generateContent({
       model,
       contents: history,
-      config: { systemInstruction: system, tools: [{ functionDeclarations }], temperature: 0.2 },
+      config: { systemInstruction: system, tools: [{ functionDeclarations }], temperature: 0.2, abortSignal: AbortSignal.timeout(CALL_TIMEOUT_MS) },
     }),
   );
   return {

@@ -3,7 +3,7 @@ import { withoutQloo } from "@/lib/pitch";
 import { clientIp, loadReport, rateLimit, saveReport } from "@/lib/store";
 
 export const runtime = "nodejs";
-export const maxDuration = 30;
+export const maxDuration = 60;
 
 export async function POST(req: Request) {
   const { reportId } = (await req.json().catch(() => ({}))) as { reportId?: string };

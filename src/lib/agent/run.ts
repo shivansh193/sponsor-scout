@@ -7,6 +7,8 @@ import type { Report, RunInput } from "../types";
 import { TOOLS, runTool, type Ctx, type Emit } from "./tools";
 
 const MAX_TURNS = 14;
+// After this, the agent hands over to the scripted plan so the request finishes in time.
+const GEMINI_BUDGET_MS = Number(process.env.GEMINI_BUDGET_MS ?? 30000);
 
 const SYSTEM = `You are Sponsor Scout, a media-planning agent for small direct-to-consumer brands.
 Your job: find who the brand should sponsor (podcasts, creators, artists), where it should show up in a city, and which non-competing brands to collaborate with, using Qloo taste data through your tools.
@@ -81,7 +83,14 @@ async function runGemini(ctx: Ctx, attempted: Set<string>): Promise<{ text: stri
   const tools = Object.values(TOOLS).map((t) => t.def);
   const history: Content[] = [{ role: "user", parts: [{ text: describeInput(ctx.report.input) }] }];
   const allowed = new Set<string>();
+  const deadline = Date.now() + GEMINI_BUDGET_MS;
   for (let turn = 0; turn < MAX_TURNS; turn++) {
+    if (Date.now() > deadline) {
+      const msg = "Gemini ran past its time budget; finishing the remaining steps with the scripted plan.";
+      ctx.report.notes.push(msg);
+      ctx.emit({ type: "note", text: msg });
+      return { text: "", allowed };
+    }
     const res = await toolTurn(history, tools, SYSTEM);
     if (!res.calls.length) return { text: res.text, allowed };
     if (res.content) history.push(res.content);

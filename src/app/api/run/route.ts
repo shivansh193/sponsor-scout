@@ -3,7 +3,7 @@ import { clientIp, findRun, loadReport, rateLimit, rememberRun, saveReport } fro
 import type { AgeBand, Budget, RunInput, Tag } from "@/lib/types";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 const BUDGETS: Budget[] = ["bootstrapped", "growing", "funded"];
 const AGES: AgeBand[] = ["35_and_younger", "36_to_55", "55_and_older"];
@@ -33,6 +33,9 @@ export async function POST(req: Request) {
   const stream = new ReadableStream({
     async start(controller) {
       const send = (event: string, data: unknown) => controller.enqueue(enc.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
+      // Flush headers at once and keep the connection alive while slow steps run.
+      controller.enqueue(enc.encode(": open\n\n"));
+      const ping = setInterval(() => controller.enqueue(enc.encode(": ping\n\n")), 10000);
       try {
         // Cached run: replay its trace quickly so the first click is instant.
         const prevId = body.fresh ? null : await findRun(input);
@@ -57,6 +60,7 @@ export async function POST(req: Request) {
       } catch (e) {
         send("error", { message: e instanceof Error ? e.message : "Run failed" });
       } finally {
+        clearInterval(ping);
         controller.close();
       }
     },
