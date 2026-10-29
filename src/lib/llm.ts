@@ -32,6 +32,17 @@ function isTransient(e: unknown): boolean {
   return /\b(429|500|502|503|504)\b|overloaded|high demand|UNAVAILABLE|RESOURCE_EXHAUSTED/i.test(msg);
 }
 
+function isTimeout(e: unknown): boolean {
+  return (e instanceof Error && (e.name === "AbortError" || e.name === "TimeoutError")) || /aborted|timed? ?out/i.test(String(e));
+}
+
+/** Model IDs this key can call that contain `match`, for picking GEMINI_MODEL. */
+export async function listModels(match = "flash"): Promise<string[]> {
+  const out: string[] = [];
+  for await (const m of await ai().models.list()) if (m.name?.includes(match)) out.push(m.name.replace("models/", ""));
+  return out.sort();
+}
+
 /** Retries transient Gemini errors (overload, rate limit) with backoff, then tries the fallback model. */
 async function withRetry<T>(fn: (model: string) => Promise<T>): Promise<T> {
   const models = FALLBACK_MODEL && FALLBACK_MODEL !== GEMINI_MODEL ? [GEMINI_MODEL, FALLBACK_MODEL] : [GEMINI_MODEL];
@@ -48,6 +59,8 @@ async function withRetry<T>(fn: (model: string) => Promise<T>): Promise<T> {
           attempt--;
           continue;
         }
+        // A timed-out call would just time out again: move on to the fallback model.
+        if (isTimeout(e)) break;
         if (!isTransient(e)) throw e;
         if (attempt < RETRY_DELAYS_MS.length) await new Promise((r) => setTimeout(r, RETRY_DELAYS_MS[attempt]));
       }
