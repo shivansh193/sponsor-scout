@@ -165,6 +165,7 @@ export async function runAgent(input: RunInput, emit: Emit): Promise<Report> {
 
   if (llmText && numbersGrounded(llmText, allowed)) report.summary = llmText;
   else {
+    if (llmText) report.rejectedSummary = llmText;
     if (llmText) report.notes.push("Agent summary cited a number not found in any Qloo result, so it was replaced with a generated summary.");
     report.summary = templateSummary(report);
   }

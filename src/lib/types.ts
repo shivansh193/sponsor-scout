@@ -127,6 +127,8 @@ export interface Report {
   notes: string[];
   trace: TraceStep[];
   withoutQloo?: string;
+  /** The agent's own summary when the number check rejected it (kept for debugging, not shown). */
+  rejectedSummary?: string;
 }
 
 export interface Evidence {
