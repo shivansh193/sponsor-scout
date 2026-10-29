@@ -59,8 +59,11 @@ describe("Gemini tool loop", () => {
     const r = await runAgent(input, (e) => (e.type === "note" ? notes.push(e.text) : e.step.status !== "running" && steps.push(e.step.tool)));
 
     expect(r.agent).toBe("gemini");
-    // Model-chosen steps first, then the backfilled ones.
-    expect(steps).toEqual(["resolve_brand", "audience_profile", "find_sponsors", "find_sponsors", "find_sponsors", "map_city", "find_partners", "find_collab_brands"]);
+    // Model-chosen steps first (the second turn's two calls run in parallel, so
+    // either may finish first), then the backfilled ones.
+    expect(steps[0]).toBe("resolve_brand");
+    expect(steps.slice(1, 3).sort()).toEqual(["audience_profile", "find_sponsors"]);
+    expect(steps.slice(3)).toEqual(["find_sponsors", "find_sponsors", "map_city", "find_partners", "find_collab_brands"]);
     expect(notes.some((n) => n.includes("skipped 5 step"))).toBe(true);
 
     // The second request carried the model turn and a matching function response.

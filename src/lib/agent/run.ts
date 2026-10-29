@@ -15,11 +15,10 @@ Your job: find who the brand should sponsor (podcasts, creators, artists), where
 
 Rules:
 - Start with resolve_brand if a brand was confirmed, otherwise resolve_lookalikes. If resolve_brand returns found=false, call resolve_lookalikes and say so.
-- Then call audience_profile, then find_sponsors for each of podcast, person and artist.
-- If a city was given, call map_city and find_partners for it.
-- Call find_collab_brands.
+- Then call audience_profile.
+- Then, in a single turn, call these in parallel: find_sponsors for each of podcast, person and artist; find_collab_brands; and, if a city was given, map_city and find_partners for it.
 - If a tool returns empty, try the fallback (lookalikes or tags) once, and mention it.
-- Write numbers in plain words, like "affinity 87/100" or "30th popularity percentile". Never write tool field names such as popularity_pct.
+- Write numbers as digits, exactly as the tools returned them, with a plain label: "affinity 87/100", "30th popularity percentile". Never spell numbers out as words, and never write tool field names such as popularity_pct.
 - Every claim must come from a tool result. Never invent numbers, names or facts. Only use numbers exactly as tools returned them.
 - When finished, reply with a plain summary of 3 to 5 short sentences for the founder: the audience in one line, the best value sponsorship and why (with its affinity and popularity numbers), the best neighbourhood if mapped, and one collab. No marketing fluff, no headings, no bullet points.`;
 
@@ -95,15 +94,20 @@ async function runGemini(ctx: Ctx, attempted: Set<string>): Promise<{ text: stri
     const res = await toolTurn(history, tools, SYSTEM);
     if (!res.calls.length) return { text: res.text, allowed };
     if (res.content) history.push(res.content);
-    const parts = [];
-    for (const call of res.calls) {
+    const exec = async (call: (typeof res.calls)[number]) => {
       attempted.add(`${call.name}:${JSON.stringify(call.args)}`);
       const out = await runTool(ctx, call.name, call.args);
       const payload = { ...out.summary, result_count: out.count, ...(out.note ? { note: out.note } : {}) };
       collectNumbers(payload, allowed);
-      parts.push({ functionResponse: { id: call.id, name: call.name, response: payload } });
-    }
-    history.push({ role: "user", parts });
+      return { functionResponse: { id: call.id, name: call.name, response: payload } };
+    };
+    // Resolving the brand sets the audience signal the other tools need, so it
+    // runs first; everything else in the turn runs in parallel.
+    const results = new Map<(typeof res.calls)[number], Awaited<ReturnType<typeof exec>>>();
+    for (const c of res.calls.filter((c) => c.name.startsWith("resolve_"))) results.set(c, await exec(c));
+    const rest = res.calls.filter((c) => !c.name.startsWith("resolve_"));
+    (await Promise.all(rest.map(exec))).forEach((r, i) => results.set(rest[i], r));
+    history.push({ role: "user", parts: res.calls.map((c) => results.get(c)!) });
   }
   return { text: "", allowed };
 }
@@ -117,8 +121,9 @@ export function collectNumbers(v: unknown, out: Set<string>) {
   else if (v && typeof v === "object") Object.entries(v).forEach(([k, x]) => (collectNumbers(k, out), collectNumbers(x, out)));
 }
 
-/** True when every number in the text appeared in a tool result (ordinals like "41st" included). */
+/** True when every number in the text appeared in a tool result (ordinals like "41st" included). Spelled-out numbers can't be checked, so they fail. */
 export function numbersGrounded(text: string, allowed: Set<string>): boolean {
+  if (/\b(eleven|twelve|(thir|four|fif|six|seven|eigh|nine)teen|(twen|thir|for|fif|six|seven|eigh|nine)t(y|ieth)|hundred|thousand|million)\b/i.test(text)) return false;
   return (text.match(/\d+(\.\d+)?/g) ?? []).every((n) => allowed.has(n) || Number(n) <= 10);
 }
 

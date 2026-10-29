@@ -17,6 +17,11 @@ describe("numbersGrounded", () => {
     collectNumbers({ demographics: { age: { "35_to_44": 0.4, "45_to_54": 0.2 } } }, seen);
     expect(numbersGrounded("Mostly ages 35 to 54.", seen)).toBe(true);
   });
+  it("rejects spelled-out numbers, which it can't check", () => {
+    expect(numbersGrounded("An affinity of ninety-six out of one hundred.", allowed)).toBe(false);
+    expect(numbersGrounded("Aged twenty-five to thirty-four.", allowed)).toBe(false);
+    expect(numbersGrounded("Start with one podcast and two venues.", allowed)).toBe(true);
+  });
   it("rejects invented numbers", () => {
     expect(numbersGrounded("Reaches 250000 listeners.", allowed)).toBe(false);
   });
