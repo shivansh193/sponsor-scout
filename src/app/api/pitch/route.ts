@@ -9,7 +9,7 @@ export const maxDuration = 60;
 export async function POST(req: Request) {
   const { reportId, entityId } = (await req.json().catch(() => ({}))) as { reportId?: string; entityId?: string };
   if (!reportId || !entityId) return Response.json({ error: "reportId and entityId required" }, { status: 400 });
-  const key = `pitch:${reportId}:${entityId}`;
+  const key = `pitch:v2:${reportId}:${entityId}`;
   const hit = await kvGet(key);
   if (hit) return Response.json(hit);
   if (!(await rateLimit(clientIp(req), "pitch", 40, 3600))) return Response.json({ error: "Rate limited" }, { status: 429 });

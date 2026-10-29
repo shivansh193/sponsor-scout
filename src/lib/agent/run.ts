@@ -19,6 +19,7 @@ Rules:
 - If a city was given, call map_city and find_partners for it.
 - Call find_collab_brands.
 - If a tool returns empty, try the fallback (lookalikes or tags) once, and mention it.
+- Write numbers in plain words, like "affinity 87/100" or "30th popularity percentile". Never write tool field names such as popularity_pct.
 - Every claim must come from a tool result. Never invent numbers, names or facts. Only use numbers exactly as tools returned them.
 - When finished, reply with a plain summary of 3 to 5 short sentences for the founder: the audience in one line, the best value sponsorship and why (with its affinity and popularity numbers), the best neighbourhood if mapped, and one collab. No marketing fluff, no headings, no bullet points.`;
 

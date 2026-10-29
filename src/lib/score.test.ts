@@ -74,3 +74,10 @@ describe("mergeNeighbourhoods", () => {
     expect(out[0].affinityRank).toBe(0.99);
   });
 });
+
+describe("stripMarkdown", () => {
+  it("removes bold, headings and star bullets", async () => {
+    const { stripMarkdown } = await import("./pitch");
+    expect(stripMarkdown("### Podcasts\n*   **How I Built This:** craft\n---\nDone")).toBe("Podcasts\n- How I Built This: craft\n\nDone");
+  });
+});

@@ -39,14 +39,18 @@ export async function draftPitch(r: Report, ev: Evidence): Promise<{ email: stri
   const ev_ = evidenceLines(r, ev);
   if (hasLLM()) {
     try {
+      // Popularity, rank and value are the founder's negotiating info ("you're affordable"),
+      // so the email only gets the audience-fit facts.
+      const fit = ev_.filter((l) => !/^(Popularity|Rank):/.test(l));
       const email = await generateText(
         `Write a short outreach email (under 140 words) from the founder of ${brand} to ${ev.pick.name} (a ${KIND_WORD[ev.pick.kind] ?? ev.pick.kind}), proposing a ${ev.pick.kind === "brand" ? "collaboration" : ev.pick.kind === "place" ? "pop-up or partnership" : "sponsorship"}.
-Use only these facts as evidence, paraphrased naturally, and do not add any other numbers or claims about either party:
-${ev_.map((l) => `- ${l}`).join("\n")}
-Start with "Subject:" on the first line. Plain, specific, friendly. No hype words. Sign off as "[Your name], ${brand}".`,
+Use only these facts about audience fit, paraphrased naturally, and do not add any other numbers or claims about either party:
+${fit.map((l) => `- ${l}`).join("\n")}
+Never mention popularity, rankings, value scores, price, or that the recipient is small or less well known.
+Start with "Subject:" on the first line. Plain text, no markdown. Plain, specific, friendly. No hype words. Sign off as "[Your name], ${brand}".`,
         "You write concise, honest B2B outreach emails. You never invent facts.",
       );
-      if (email) return { email, source: "gemini" };
+      if (email) return { email: stripMarkdown(email), source: "gemini" };
     } catch {
       // fall through to the template
     }
@@ -66,10 +70,23 @@ We'd love to talk about a ${p.kind === "brand" ? "collaboration" : p.kind === "p
   };
 }
 
+/** Turns markdown into plain text for panels that render text as-is. */
+export function stripMarkdown(s: string): string {
+  return s
+    .replace(/\*\*(.+?)\*\*/g, "$1")
+    .replace(/__(.+?)__/g, "$1")
+    .replace(/^#{1,6}\s+/gm, "")
+    .replace(/^\s*[*+]\s+/gm, "- ")
+    .replace(/^\s*-{3,}\s*$/gm, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 export async function withoutQloo(r: Report): Promise<string> {
   const brand = r.input.brand?.name || r.input.brandQuery || r.input.lookalikes.map((l) => l.name).join(" / ");
   const city = r.input.city || "New York";
-  return generateText(
-    `Which podcasts, creators and artists should the brand "${brand}" sponsor, which brands should it collaborate with, and where in ${city} should it do a pop-up? Give a short list for each.`,
+  const text = await generateText(
+    `Which podcasts, creators and artists should the brand "${brand}" sponsor, which brands should it collaborate with, and where in ${city} should it do a pop-up? Give a short list for each. Plain text only, no markdown: use a plain heading line per section and "- " for list items.`,
   );
+  return stripMarkdown(text);
 }
