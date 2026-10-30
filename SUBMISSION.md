@@ -61,6 +61,23 @@ Ask an LLM alone which podcasts a coffee roaster should sponsor and where to hol
 - Small brands often aren't in Qloo. The "brands like us" fallback makes the product usable for exactly the people it's for.
 - Keeping the LLM honest: tool results are the only source of numbers, and the summary check enforces it.
 
+## Request to result (one example)
+
+Little Hill Tea, London, bootstrapped budget. Qloo doesn't know the brand, so the user picks two lookalikes.
+
+1. `GET /search` for "Twinings" and "Clipper Teas" returns their entity IDs.
+2. `GET /v2/insights` with `filter.type=urn:entity:artist`, `signal.interests.entities=<both IDs>` and `filter.popularity.max=0.8` returns artists the lookalikes' audience over-indexes on. One of them is Girls@Play: affinity 0.90, popularity 0.28.
+3. The app computes value = 0.90 × (1 − 0.28) = 0.65. That makes Girls@Play #1 by value, though it was #14 by raw affinity.
+
+No personal data is sent to Qloo, and the API key stays on the server.
+
+## Known limitations
+
+- Qloo affinity describes what groups of people tend to like, not what any one customer will do. It says nothing about a creator's price or availability; the popularity percentile is a stand-in for cost.
+- Many small brands aren't in Qloo. The lookalike fallback plans for brands like yours, not for yours, and the report says so.
+- Brand search can match the wrong entity (a search for "Fly By Jing" returned a different brand), so the user confirms the match before the run.
+- Qloo results are cached for 24 hours, and heatmaps and partner places only cover cities Qloo has data for.
+
 ## What's next
 
 - A "rising now" badge from Qloo's trending endpoint, to catch creators before their prices go up.
