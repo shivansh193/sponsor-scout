@@ -53,9 +53,10 @@ export function excludeCompetitors(entities: Entity[], categoryTagIds: string[],
   return entities.filter((e) => !seeds.has(e.id) && !e.tags.some((t) => cats.has(t.id)));
 }
 
-/** Category tags of the seed brands (used to exclude competitors from collabs). */
+/** Category tags of one seed brand (used to exclude competitors from collabs). Live Qloo brands carry urn:tag:genre:brand:* tags; some only have product_category tags. */
 export function categoryTags<T extends { id: string }>(tags: T[]): T[] {
-  return tags.filter((t) => t.id.includes(":category:"));
+  const genre = tags.filter((t) => t.id.includes(":category:") || t.id.startsWith("urn:tag:genre:brand:"));
+  return genre.length ? genre : tags.filter((t) => t.id.startsWith("urn:tag:product_category:qloo:"));
 }
 
 export function topPoints(points: HeatPoint[], n: number): HeatPoint[] {

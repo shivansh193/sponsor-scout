@@ -1,5 +1,5 @@
 import * as qloo from "../qloo";
-import { neighbourhoodName } from "../geo";
+import { cityPoint, neighbourhoodName } from "../geo";
 import { BUDGETS, categoryTags, excludeCompetitors, mergeNeighbourhoods, pct, rankPicks, topPoints } from "../score";
 import type { Entity, EntityKind, Evidence, Pick, Report, SponsorKind, TraceStep } from "../types";
 import type { ToolDef } from "../llm";
@@ -154,16 +154,22 @@ async function find_partners(ctx: Ctx, args: { city?: string }): Promise<ToolRes
   requireSeed(r);
   const city = args.city || r.input.city;
   if (!city) return { count: 0, empty: true, summary: { error: "No city given." } };
-  const res = await qloo.insights("place", { ...signal(r), location: city, popularityMax: BUDGETS[r.input.budget].popularityMax, take: 20 });
+  // A bare name like "New York" can resolve to the whole state, so live runs
+  // search around the geocoded city centre. Hotels are rarely pop-up partners.
+  const pt = qloo.isMock() ? null : await cityPoint(city);
+  const res = await qloo.insights("place", { ...signal(r), location: city, near: pt ? { ...pt, radius: 15000 } : undefined, excludeTags: ["urn:tag:genre:place:hotel"], popularityMax: BUDGETS[r.input.budget].popularityMax, take: 20 });
   const picks = rankPicks(res.value, r.input.budget, audienceLabel(r)).slice(0, 8);
   r.city = r.city ? { ...r.city, partners: picks } : { query: city, center: null, points: [], neighbourhoods: [], partners: picks };
   return { count: picks.length, empty: !picks.length, note: res.warning, summary: { city, partners: picks.slice(0, 5).map(brief) } };
 }
 
+// Qloo files hospitals, universities and the like as brands; they aren't collab partners.
+const NOT_COLLAB_GENRES = ["healthcare", "academic", "government", "religious"].map((g) => `urn:tag:genre:brand:${g}`);
+
 async function find_collab_brands(ctx: Ctx): Promise<ToolResult> {
   const r = ctx.report;
   requireSeed(r);
-  const cats = r.seed.categoryTags.map((t) => t.id);
+  const cats = [...r.seed.categoryTags.map((t) => t.id), ...NOT_COLLAB_GENRES];
   const res = await qloo.insights("brand", { ...signal(r), excludeTags: cats, excludeEntities: seedIds(r), popularityMax: BUDGETS[r.input.budget].popularityMax, take: 20 });
   // Qloo ignores bad params silently, so the exclusion is applied again in code.
   const clean = excludeCompetitors(res.value, cats, seedIds(r));

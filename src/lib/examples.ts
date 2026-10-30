@@ -38,5 +38,31 @@ export const MOCK_EXAMPLES: Example[] = [
   },
 ];
 
-// Fill in after the coverage probe (scripts/probe.mts) with real Qloo entity IDs.
-export const LIVE_EXAMPLES: Example[] = [];
+// Real Qloo entities, picked from the coverage probe (scripts/probe.mts).
+export const LIVE_EXAMPLES: Example[] = [
+  {
+    title: "Ghia",
+    blurb: "Non-alcoholic aperitif, bootstrapped, pop-up in Los Angeles",
+    input: { brandQuery: "Ghia", brand: { id: "03E484EE-FAD4-41FB-9139-2A053C849654", name: "Ghia" }, lookalikes: [], tags: [], city: "Los Angeles", budget: "bootstrapped" },
+  },
+  {
+    title: "Little Hill Tea",
+    blurb: "Not in Qloo, so it borrows two lookalike tea brands. London",
+    input: {
+      brandQuery: "Little Hill Tea",
+      brand: null,
+      lookalikes: [
+        { id: "240ED88A-F5D6-4706-8035-3E3E520B550B", name: "Twinings Tea" },
+        { id: "EF5606D4-A0E5-427D-8809-B1B24E98105F", name: "Clipper Teas" },
+      ],
+      tags: [],
+      city: "London",
+      budget: "bootstrapped",
+    },
+  },
+  {
+    title: "Brightland",
+    blurb: "Olive oil brand with a growing budget, New York",
+    input: { brandQuery: "Brightland", brand: { id: "DAEC51CD-62AE-446B-B1E6-EE12FCC3F726", name: "Brightland" }, lookalikes: [], tags: [], city: "New York", budget: "growing" },
+  },
+];

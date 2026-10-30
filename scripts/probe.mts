@@ -46,7 +46,7 @@ let sampled = false;
 for (const name of brands) {
   const s = await get("/search", { query: name, types: "urn:entity:brand", take: 3 });
   const hit = (s.json as { results?: { entity_id: string; name: string; popularity?: number }[] })?.results?.[0];
-  const row: Record<string, string | number> = { brand: name, search: s.status, match: hit ? `${hit.name}` : "-", pop: hit?.popularity?.toFixed(2) ?? "-" };
+  const row: Record<string, string | number> = { query: name, search: s.status, match: hit ? `${hit.name}` : "-", pop: hit?.popularity?.toFixed(2) ?? "-" };
   if (hit) {
     const sig = { "signal.interests.entities": hit.entity_id, take: 10 };
     for (const k of ["podcast", "person", "artist", "brand", "place"]) {

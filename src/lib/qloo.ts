@@ -7,9 +7,9 @@ import type { AgeBand, Demographics, Entity, EntityKind, HeatPoint, Tag } from "
 // (24h) and are then normalised by the parsers below, so mock and live data
 // take the same path.
 //
-// Field names marked VERIFY were taken from the docs, which do not publish full
-// response schemas. The parsers accept the likely variants; scripts/probe.mts
-// prints real shapes once the key arrives.
+// The docs don't publish full response schemas; the parsers were checked
+// against live responses with scripts/probe.mts. Demographics come back as
+// signed indices (-1..1) relative to the general population, not shares.
 
 export const QLOO_BASE = process.env.QLOO_BASE_URL ?? "https://hackathon.api.qloo.com";
 const CACHE_TTL = 60 * 60 * 24;
@@ -101,7 +101,7 @@ export function parseEntity(e: unknown, fallbackKind = "unknown"): Entity | null
     id,
     name,
     kind: kindFromTypes(e.types, fallbackKind),
-    affinity: num(dig(e, "query", "affinity")), // VERIFY field name
+    affinity: num(dig(e, "query", "affinity")),
     popularity: num(e.popularity),
     tags: Array.isArray(e.tags) ? (e.tags.map(parseTag).filter(Boolean) as Tag[]) : [],
     description: str(props.short_description) ?? str(props.description),
@@ -130,7 +130,7 @@ export interface Call<T> {
 export async function searchEntities(query: string, kinds: EntityKind[] = ["brand"], take = 8): Promise<Call<Entity[]>> {
   const r = await qlooGet("/search", {
     query,
-    types: kinds.map((k) => `urn:entity:${k}`).join(","), // VERIFY param name per /search docs
+    types: kinds.map((k) => `urn:entity:${k}`).join(","),
     take,
   });
   const value = entityArray(r.data)
@@ -140,7 +140,7 @@ export async function searchEntities(query: string, kinds: EntityKind[] = ["bran
 }
 
 export async function searchTags(query: string, take = 10): Promise<Call<Tag[]>> {
-  const r = await qlooGet("/v2/tags", { "filter.query": query, take }); // VERIFY param name
+  const r = await qlooGet("/v2/tags", { "filter.query": query, take });
   const arr = dig(r.data, "results", "tags");
   const value = Array.isArray(arr) ? (arr.map(parseTag).filter(Boolean) as Tag[]) : [];
   return { value, cacheHit: r.cacheHit };
@@ -154,6 +154,8 @@ export interface InsightsOpts {
   excludeTags?: string[];
   excludeEntities?: string[];
   location?: string;
+  /** Searches within radius metres of a point instead of by location name. */
+  near?: { lat: number; lng: number; radius: number };
   take?: number;
 }
 
@@ -172,7 +174,9 @@ export async function insights(kind: EntityKind, o: InsightsOpts): Promise<Call<
     "filter.popularity.max": o.popularityMax,
     "filter.exclude.tags": o.excludeTags?.length ? o.excludeTags.join(",") : undefined,
     "filter.exclude.entities": o.excludeEntities?.length ? o.excludeEntities.join(",") : undefined,
-    "filter.location.query": o.location,
+    "filter.location.query": o.near ? undefined : o.location,
+    "filter.location": o.near ? `POINT(${o.near.lng} ${o.near.lat})` : undefined,
+    "filter.location.radius": o.near?.radius,
     take: o.take ?? 10,
   });
   const value = entityArray(r.data)
@@ -189,7 +193,7 @@ export async function insights(kind: EntityKind, o: InsightsOpts): Promise<Call<
 
 /** Averages the per-entity demographic affinities into one profile. */
 export function parseDemographics(data: unknown): Demographics | null {
-  const rows = dig(data, "results", "demographics"); // VERIFY
+  const rows = dig(data, "results", "demographics");
   if (!Array.isArray(rows) || !rows.length) return null;
   const age: Record<string, number[]> = {};
   const gender: Record<string, number[]> = {};
@@ -252,7 +256,7 @@ export interface Overlap {
   sharedTags: string[];
 }
 
-/** /v2/analysis/compare. The response shape is undocumented; this pulls shared tag names and an average score if present. VERIFY */
+/** /v2/analysis/compare. Returns shared tags with query.score; this keeps the top tag names and their average score. */
 export function parseCompare(data: unknown): Overlap {
   const res = dig(data, "results");
   const rows = (Array.isArray(dig(res, "tags")) ? dig(res, "tags") : dig(res, "entities")) as unknown[] | undefined;

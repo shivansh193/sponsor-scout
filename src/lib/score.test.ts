@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { excludeCompetitors, mergeNeighbourhoods, rankPicks, valueScore } from "./score";
+import { categoryTags, excludeCompetitors, mergeNeighbourhoods, rankPicks, valueScore } from "./score";
 import type { Entity } from "./types";
 
 const ent = (id: string, affinity: number, popularity: number, tags: string[] = []): Entity => ({
@@ -62,6 +62,16 @@ describe("excludeCompetitors", () => {
       ["seed"],
     );
     expect(out.map((e) => e.id)).toEqual(["ok"]);
+  });
+});
+
+describe("categoryTags", () => {
+  const t = (id: string) => ({ id });
+  it("uses Qloo's genre:brand tags", () => {
+    expect(categoryTags([t("urn:tag:genre:brand:fashion"), t("urn:tag:aesthetic_property:qloo:minimalist"), t("urn:tag:product_category:qloo:apparel")])).toEqual([t("urn:tag:genre:brand:fashion")]);
+  });
+  it("falls back to product categories when a brand has no genre tag", () => {
+    expect(categoryTags([t("urn:tag:product_category:qloo:beverages"), t("urn:tag:industry:qloo:food_beverage")])).toEqual([t("urn:tag:product_category:qloo:beverages")]);
   });
 });
 
