@@ -1,5 +1,7 @@
 # Sponsor Scout
 
+**Live:** https://sponsor-scout.vercel.app · **Demo video (2:54):** https://youtu.be/YR31NnS1aGg
+
 Small direct-to-consumer brands spend money every month on podcast ads, creator deals, pop-ups and collabs, and they choose where by guessing or by copying bigger brands. Sponsor Scout is an agent that works out who your customers are by taste, using Qloo, and then gives you a media plan:
 
 - **Who to sponsor:** podcasts, creators and artists your audience loves, ranked by affinity and by **value**: loved by your audience but not famous, so you can afford them.

@@ -6,6 +6,7 @@ Paste-ready text for the Devpost form.
 
 **Try it:** https://sponsor-scout.vercel.app (no login; click an example)
 **Code:** https://github.com/shivansh193/sponsor-scout (MIT)
+**Demo video (2:54):** https://youtu.be/YR31NnS1aGg
 
 ---
 
