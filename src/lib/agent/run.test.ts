@@ -11,6 +11,7 @@ describe("numbersGrounded", () => {
   const allowed = new Set(["87", "34"]);
   it("accepts numbers the tools returned, and small counts", () => {
     expect(numbersGrounded("Affinity 87, 34th percentile, 3 podcasts.", allowed)).toBe(true);
+    expect(numbersGrounded("Affinity 87/100.", allowed)).toBe(true);
   });
   it("counts numbers in object keys, like demographic buckets", () => {
     const seen = new Set<string>();

@@ -19,6 +19,7 @@ Rules:
 - Then, in a single turn, call these in parallel: find_sponsors for each of podcast, person and artist; find_collab_brands; and, if a city was given, map_city and find_partners for it.
 - If a tool returns empty, try the fallback (lookalikes or tags) once, and mention it.
 - Write numbers as digits, exactly as the tools returned them, with a plain label: "affinity 87/100", "30th popularity percentile". Never spell numbers out as words, and never write tool field names such as popularity_pct.
+- Describe the audience's age and gender in words ("skews female, strongest at 25 to 34"); don't quote demographic index values.
 - Every claim must come from a tool result. Never invent numbers, names or facts. Only use numbers exactly as tools returned them.
 - When finished, reply with a plain summary of 3 to 5 short sentences for the founder: the audience in one line, the best value sponsorship and why (with its affinity and popularity numbers), the best neighbourhood if mapped, and one collab. No marketing fluff, no headings, no bullet points.`;
 
@@ -124,7 +125,8 @@ export function collectNumbers(v: unknown, out: Set<string>) {
 /** True when every number in the text appeared in a tool result (ordinals like "41st" included). Spelled-out numbers can't be checked, so they fail. */
 export function numbersGrounded(text: string, allowed: Set<string>): boolean {
   if (/\b(eleven|twelve|(thir|four|fif|six|seven|eigh|nine)teen|(twen|thir|for|fif|six|seven|eigh|nine)t(y|ieth)|hundred|thousand|million)\b/i.test(text)) return false;
-  return (text.match(/\d+(\.\d+)?/g) ?? []).every((n) => allowed.has(n) || Number(n) <= 10);
+  // 100 is the scale in "affinity 87/100", which the prompt asks for.
+  return (text.match(/\d+(\.\d+)?/g) ?? []).every((n) => allowed.has(n) || Number(n) <= 10 || n === "100");
 }
 
 export function templateSummary(r: Report): string {
