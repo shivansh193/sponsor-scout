@@ -1,6 +1,6 @@
 # Devpost submission text
 
-Paste-ready text for the Devpost form. Fill in the [BRACKETS] after the live-data probe.
+Paste-ready text for the Devpost form.
 
 **Tagline (one line):** An agent that uses Qloo taste data to show small DTC brands which podcasts, creators, neighbourhoods and collab partners their customers already love, ranked by how affordable each one is.
 
@@ -31,7 +31,7 @@ Famous sponsorships are overpriced for small brands. Qloo returns both an affini
 
 `value = affinity × (1 − popularity)^k`
 
-`k` comes from the budget you choose: bootstrapped 1.0, growing 0.5, funded 0 (pure affinity). Bootstrapped and growing budgets also cap `filter.popularity.max`. The UI shows both rankings side by side, and how many places each pick climbed. [EXAMPLE FROM LIVE DATA: e.g. "For BRAND, the #1 value podcast was #N by raw affinity, at the Pth popularity percentile."]
+`k` comes from the budget you choose: bootstrapped 1.0, growing 0.5, funded 0 (pure affinity). Bootstrapped and growing budgets also cap `filter.popularity.max`. The UI shows both rankings side by side, and how many places each pick climbed. For Little Hill Tea (a tea brand Qloo doesn't know, planned through Twinings and Clipper Teas), the #1 value artist, Girls@Play, was #14 by raw affinity, at the 28th popularity percentile.
 
 ## Why it needs Qloo
 
