@@ -41,16 +41,44 @@ export interface RawResult {
   cacheHit: boolean;
 }
 
+// The hackathon API allows 10 requests per second (X-Second-RateLimit-Limit).
+// One run fans out about a dozen calls at once, so starts are spaced to stay
+// under that, and a 429 is retried after the window resets.
+const PER_SECOND = 8;
+const RETRIES_429 = 3;
+const recentStarts: number[] = [];
+
+async function slot() {
+  for (;;) {
+    const now = Date.now();
+    while (recentStarts.length && now - recentStarts[0] >= 1000) recentStarts.shift();
+    if (recentStarts.length < PER_SECOND) {
+      recentStarts.push(now);
+      return;
+    }
+    await new Promise((r) => setTimeout(r, 1000 - (now - recentStarts[0]) + 5));
+  }
+}
+
+async function fetchQloo(url: string): Promise<Response> {
+  for (let attempt = 0; ; attempt++) {
+    await slot();
+    const res = await fetch(url, {
+      headers: { "X-Api-Key": process.env.QLOO_API_KEY!, accept: "application/json" },
+      cache: "no-store",
+    });
+    if (res.status !== 429 || attempt >= RETRIES_429) return res;
+    await new Promise((r) => setTimeout(r, 1100 + attempt * 500 + Math.random() * 300));
+  }
+}
+
 export async function qlooGet(path: string, params: Params): Promise<RawResult> {
   const qs = canonicalQuery(params);
   const mock = isMock();
   const key = `qloo:${mock ? "mock" : "live"}:${hashKey(`${path}?${qs}`)}`;
   const { value, hit } = await cached(key, CACHE_TTL, async () => {
     if (mock) return mockQloo(path, params);
-    const res = await fetch(`${QLOO_BASE}${path}?${qs}`, {
-      headers: { "X-Api-Key": process.env.QLOO_API_KEY!, accept: "application/json" },
-      cache: "no-store",
-    });
+    const res = await fetchQloo(`${QLOO_BASE}${path}?${qs}`);
     if (!res.ok) {
       const body = await res.text().catch(() => "");
       // 403 on an entity type usually means the type is unsupported for this key.

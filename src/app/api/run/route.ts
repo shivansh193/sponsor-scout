@@ -55,7 +55,10 @@ export async function POST(req: Request) {
         }
         const report = await runAgent(input, (e) => (e.type === "step" ? send("step", e.step) : send("note", { text: e.text })));
         await saveReport(report);
-        await rememberRun(input, report.id);
+        // A run with a step that never succeeded (e.g. Qloo rate limits) isn't
+        // replayed to the next person with the same input.
+        const last = new Map(report.trace.map((s) => [`${s.tool}:${s.input}`, s.status]));
+        if (![...last.values()].includes("error")) await rememberRun(input, report.id);
         send("report", { id: report.id });
       } catch (e) {
         send("error", { message: e instanceof Error ? e.message : "Run failed" });

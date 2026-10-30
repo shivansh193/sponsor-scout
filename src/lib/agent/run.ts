@@ -96,8 +96,11 @@ async function runGemini(ctx: Ctx, attempted: Set<string>): Promise<{ text: stri
     if (!res.calls.length) return { text: res.text, allowed };
     if (res.content) history.push(res.content);
     const exec = async (call: (typeof res.calls)[number]) => {
-      attempted.add(`${call.name}:${JSON.stringify(call.args)}`);
+      const key = `${call.name}:${JSON.stringify(call.args)}`;
+      attempted.add(key);
       const out = await runTool(ctx, call.name, call.args);
+      // A failed call (e.g. a Qloo 429) gets one more try from the backfill.
+      if ("error" in out.summary) attempted.delete(key);
       const payload = { ...out.summary, result_count: out.count, ...(out.note ? { note: out.note } : {}) };
       collectNumbers(payload, allowed);
       return { functionResponse: { id: call.id, name: call.name, response: payload } };
