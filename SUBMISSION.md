@@ -49,7 +49,7 @@ Ask an LLM alone which podcasts a coffee roaster should sponsor and where to hol
   - `GET /v2/insights` with `filter.type=urn:entity:artist|podcast|tv_show|brand|destination`: the audience's taste profile.
   - `GET /v2/insights` with `filter.type=urn:demographics`: age and gender affinity, for the audience and for each pick.
   - `GET /v2/insights` with `filter.type=urn:heatmap` and `filter.location.query`: where in a city the audience over-indexes.
-  - `GET /v2/insights` with `filter.type=urn:entity:place` and `filter.location.query`: local partner places.
+  - `GET /v2/insights` with `filter.type=urn:entity:place`, `filter.location` (a point at the geocoded city centre) and `filter.location.radius`, minus hotels: local partner places.
   - `GET /v2/insights` with `filter.type=urn:entity:brand`, `filter.exclude.tags` and `filter.exclude.entities`: non-competing collab brands.
   - `GET /v2/analysis/compare`: audience overlap between the brand and a pick, used in the pitch email.
 - **Stack:** Next.js on Vercel, TypeScript, Upstash Redis (24-hour cache of Qloo calls, permalinks, per-IP rate limits), Leaflet with OpenStreetMap tiles for the heatmap, Nominatim for neighbourhood names.
@@ -57,6 +57,7 @@ Ask an LLM alone which podcasts a coffee roaster should sponsor and where to hol
 ## Challenges
 
 - Qloo silently ignores parameters that don't apply to a `filter.type`, so an empty 200 often means a wrong parameter, not missing data. The client logs a warning on empty results, and competitor exclusion is applied again in code rather than trusted to the API.
+- A bare city name can be ambiguous: "New York" first returned inns across New York State. Partner search now runs around the geocoded city centre instead.
 - Small brands often aren't in Qloo. The "brands like us" fallback makes the product usable for exactly the people it's for.
 - Keeping the LLM honest: tool results are the only source of numbers, and the summary check enforces it.
 
